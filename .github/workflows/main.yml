@@ -40,10 +40,20 @@ jobs:
       - name: Build WASM-GC Client
         run: ./gradlew :target_teavm_wasm_gc:makeMainWasmClientBundle
 
+      - name: Gather Output Files
+        run: |
+          mkdir -p final_output
+          # 生成された可能性のある場所からファイルを1つの場所に集めます
+          cp -r target_teavm_wasm_gc/javascript_dist/* final_output/ 2>/dev/null || true
+          cp -r target_teavm_wasm_gc/build/javascript_dist/* final_output/ 2>/dev/null || true
+          cp -r target_teavm_wasm_gc/build/teavm/javascript_dist/* final_output/ 2>/dev/null || true
+          # 最低限index.htmlがあるか確認（デバッグ用）
+          ls -la final_output
+
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "**/javascript_dist/"
+          path: "final_output/"
 
       - name: Deploy to GitHub Pages
         id: deployment
