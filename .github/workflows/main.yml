@@ -1,4 +1,4 @@
-yamlname: Build WASM Client
+name: Build WASM Client
 
 on:
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build WASM-GC Client
-        run: ./gradlew :target_teavm_wasm_gc:makeMainWasmClientBundle
+        run: "**/javascript_dist/"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
