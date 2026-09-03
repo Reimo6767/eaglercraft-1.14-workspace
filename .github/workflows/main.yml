@@ -43,7 +43,7 @@ jobs:
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "target_teavm_wasm_gc/build/javascript_dist/"
+          path: "**/javascript_dist/"
 
       - name: Deploy to GitHub Pages
         id: deployment
