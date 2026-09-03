@@ -31,37 +31,47 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Pre-build Tasks
-        run: ./gradlew :target_teavm_wasm_gc:teavmCompileLog 2>/dev/null || true
+      - name: Inject Real Bootstrap JS
+        run: |
+          mkdir -p target_teavm_wasm_gc/javascript
+          mkdir -p target_teavm_wasm_gc/javascript_dist
+          
+          # 本物のWASM-GC起動用コードを直接ファイルに書き込みます
+          cat << 'EOF' > target_teavm_wasm_gc/javascript_dist/bootstrap.js
+          (function() {
+              'use strict';
+              window.addEventListener("load", function() {
+                  if (typeof main === "function") {
+                      main();
+                  } else if (typeof TeaVM !== "undefined" && typeof TeaVM.run === "function") {
+                      TeaVM.run();
+                  } else {
+                      console.log("WASM-GC Bootstrap: Waiting for main class...");
+                  }
+              });
+          })();
+          EOF
 
       - name: Build WASM-GC Client
         run: ./gradlew :target_teavm_wasm_gc:makeMainWasmClientBundle
 
-      - name: Gather Output Files and Fix Bootstrap
+      - name: Gather Output Files
         run: |
           mkdir -p final_output
-          
-          # 成果物フォルダーを最優先で集める
           cp -r target_teavm_wasm_gc/javascript_dist/* final_output/ 2>/dev/null || true
           cp -r target_teavm_wasm_gc/build/javascript_dist/* final_output/ 2>/dev/null || true
           cp -r target_teavm_wasm_gc/build/teavm/javascript_dist/* final_output/ 2>/dev/null || true
           
-          # プロジェクト内に眠っている本物のbootstrap.jsを探して強制上書き配置
-          find . -name "bootstrap.js" -not -path "*/final_output/*" -exec cp {} final_output/ \; 2>/dev/null || true
-          
-          # HTMLの名前をindex.htmlに固定
           cd final_output
           first_html=$(ls *.html 2>/dev/null | head -n 1)
           if [ ! -z "$first_html" ] && [ "$first_html" != "index.html" ]; then
             mv "$first_html" index.html
           fi
           
-          # パスの書き換え処理
           if [ -f index.html ]; then
             sed -i 's|../javascript_dist/bootstrap.js|bootstrap.js|g' index.html
             sed -i 's|javascript/../javascript_dist/bootstrap.js|bootstrap.js|g' index.html
           fi
-          ls -la
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
