@@ -40,15 +40,33 @@ jobs:
       - name: Build WASM-GC Client
         run: ./gradlew :target_teavm_wasm_gc:makeMainWasmClientBundle
 
-      - name: Gather Output Files
+      - name: Gather Output Files and Fix HTML Name
         run: |
           mkdir -p final_output
-          # 生成された可能性のある場所からファイルを1つの場所に集めます
+          # 生成された可能性のある場所からファイルをすべて集めます
           cp -r target_teavm_wasm_gc/javascript_dist/* final_output/ 2>/dev/null || true
           cp -r target_teavm_wasm_gc/build/javascript_dist/* final_output/ 2>/dev/null || true
           cp -r target_teavm_wasm_gc/build/teavm/javascript_dist/* final_output/ 2>/dev/null || true
-          # 最低限index.htmlがあるか確認（デバッグ用）
-          ls -la final_output
+          
+          # もし奥のフォルダーに固まっていたら手前に引っ張り出します
+          if [ -d final_output/javascript_dist ]; then
+            cp -r final_output/javascript_dist/* final_output/
+          fi
+          
+          # 拡張子が .html のファイルを強制的に index.html という名前に書き換えて固定します
+          cd final_output
+          first_html=$(ls *.html 2>/dev/null | head -n 1)
+          if [ ! -z "$first_html" ] && [ "$first_html" != "index.html" ]; then
+            mv "$first_html" index.html
+          fi
+          
+          # 本物の起動コード(bootstrap.js)が空っぽだった場合の対策（ファイルを直接書き換え）
+          if [ -f index.html ]; then
+            # HTML内にある古い読み込み記述をブラウザが解釈できる形に全自動修正します
+            sed -i 's|../javascript_dist/bootstrap.js|bootstrap.js|g' index.html
+            sed -i 's|javascript/../javascript_dist/bootstrap.js|bootstrap.js|g' index.html
+          fi
+          ls -la
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
