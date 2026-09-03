@@ -22,6 +22,12 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Fix Path Bug (Pre-create folders)
+        run: |
+          mkdir -p target_teavm_wasm_gc/javascript
+          mkdir -p target_teavm_wasm_gc/javascript_dist
+          touch target_teavm_wasm_gc/javascript_dist/bootstrap.js
+
       - name: Build WASM-GC Client
         run: ./gradlew :target_teavm_wasm_gc:makeMainWasmClientBundle
 
