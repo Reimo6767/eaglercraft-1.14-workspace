@@ -31,38 +31,33 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Fix Path Bug (Pre-create folders)
-        run: |
-          mkdir -p target_teavm_wasm_gc/javascript
-          mkdir -p target_teavm_wasm_gc/javascript_dist
-          touch target_teavm_wasm_gc/javascript_dist/bootstrap.js
+      - name: Pre-build Tasks
+        run: ./gradlew :target_teavm_wasm_gc:teavmCompileLog 2>/dev/null || true
 
       - name: Build WASM-GC Client
         run: ./gradlew :target_teavm_wasm_gc:makeMainWasmClientBundle
 
-      - name: Gather Output Files and Fix HTML Name
+      - name: Gather Output Files and Fix Bootstrap
         run: |
           mkdir -p final_output
-          # 生成された可能性のある場所からファイルをすべて集めます
+          
+          # 成果物フォルダーを最優先で集める
           cp -r target_teavm_wasm_gc/javascript_dist/* final_output/ 2>/dev/null || true
           cp -r target_teavm_wasm_gc/build/javascript_dist/* final_output/ 2>/dev/null || true
           cp -r target_teavm_wasm_gc/build/teavm/javascript_dist/* final_output/ 2>/dev/null || true
           
-          # もし奥のフォルダーに固まっていたら手前に引っ張り出します
-          if [ -d final_output/javascript_dist ]; then
-            cp -r final_output/javascript_dist/* final_output/
-          fi
+          # プロジェクト内に眠っている本物のbootstrap.jsを探して強制上書き配置
+          find . -name "bootstrap.js" -not -path "*/final_output/*" -exec cp {} final_output/ \; 2>/dev/null || true
           
-          # 拡張子が .html のファイルを強制的に index.html という名前に書き換えて固定します
+          # HTMLの名前をindex.htmlに固定
           cd final_output
           first_html=$(ls *.html 2>/dev/null | head -n 1)
           if [ ! -z "$first_html" ] && [ "$first_html" != "index.html" ]; then
             mv "$first_html" index.html
           fi
           
-          # 本物の起動コード(bootstrap.js)が空っぽだった場合の対策（ファイルを直接書き換え）
+          # パスの書き換え処理
           if [ -f index.html ]; then
-            # HTML内にある古い読み込み記述をブラウザが解釈できる形に全自動修正します
             sed -i 's|../javascript_dist/bootstrap.js|bootstrap.js|g' index.html
             sed -i 's|javascript/../javascript_dist/bootstrap.js|bootstrap.js|g' index.html
           fi
